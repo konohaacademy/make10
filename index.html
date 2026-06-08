@@ -1193,7 +1193,9 @@ function onCorrect() {
 
 function onWrong() {
   if (isTAMode()) {
+    missedProblems.push({ numbers: [...currentProblem.numbers], solution: currentProblem.solution });
     flashPanel('wrong');
+    setTimeout(() => { if (gameActive) generateAndRender(); }, 500);
   } else {
     showFeedback(false, currentProblem.solution);
   }
