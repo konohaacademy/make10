@@ -532,7 +532,7 @@
     <button class="level-btn beginner" onclick="selectLevel('初級')">
       <span class="level-icon">⭐</span>
       <span class="level-name">初級</span>
-      <span class="level-desc">カード3枚<br>1〜5の数字<br>＋−のみ</span>
+      <span class="level-desc">カード3枚<br>1〜9の数字<br>＋−のみ</span>
     </button>
     <button class="level-btn intermediate" onclick="selectLevel('中級')">
       <span class="level-icon">⭐⭐</span>
@@ -655,7 +655,7 @@
 //  設定
 // ============================================================
 const LEVEL_CONFIG = {
-  '初級': { cardCount: 3, minNum: 1, maxNum: 5,  ops: ['+', '-'],           hasHint: true  },
+  '初級': { cardCount: 3, minNum: 1, maxNum: 9,  ops: ['+', '-'],           hasHint: true  },
   '中級': { cardCount: 4, minNum: 1, maxNum: 9,  ops: ['+', '-', '*', '/'], hasHint: false },
   '上級': { cardCount: 5, minNum: 1, maxNum: 99, ops: ['+', '-', '*', '/'], hasHint: false },
 };
@@ -812,18 +812,11 @@ function applyOp(a, op, b) {
 }
 
 function needsParen(expr, op, side) {
-  // 掛け算・割り算の場合、+か-を含む式は括弧が必要
-  if ((op === '*' || op === '/') && (expr.includes('+') || expr.includes('-'))) {
-    return true;
-  }
-  // 割り算の右側
-  if (op === '/' && side === 'right' && (expr.includes('*') || expr.includes('/') || expr.includes('+') || expr.includes('-'))) {
-    return true;
-  }
-  // 引き算の右側に+か-を含む
-  if (op === '-' && side === 'right' && (expr.includes('+') || expr.includes('-'))) {
-    return true;
-  }
+  const hasAddSub = expr.includes('＋') || expr.includes('−');
+  const hasMulDiv = expr.includes('×') || expr.includes('÷');
+  if ((op === '*' || op === '/') && hasAddSub) return true;
+  if (op === '/' && side === 'right' && (hasAddSub || hasMulDiv)) return true;
+  if (op === '-' && side === 'right' && hasAddSub) return true;
   return false;
 }
 
