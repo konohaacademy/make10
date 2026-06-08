@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Make10 - 10をつくろう！</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', system-ui, sans-serif;
+    background: linear-gradient(135deg, #E8F4FD 0%, #FFF9E6 50%, #F0FFF4 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  /* ===== SCREENS ===== */
+  .screen { display: none; width: 100%; max-width: 520px; }
+  .screen.active { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+
+  /* ===== TITLE SCREEN ===== */
+  .title-logo {
+    text-align: center;
+  }
+  .title-logo h1 {
+    font-size: clamp(2.8rem, 12vw, 5rem);
+    font-weight: 900;
+    background: linear-gradient(135deg, #FF6B35, #F7C59F, #FFBE0B, #FB5607);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 0.05em;
+    line-height: 1.1;
+    text-shadow: none;
+    filter: drop-shadow(2px 3px 6px rgba(255,107,53,0.3));
+  }
+  .title-logo .subtitle {
+    font-size: clamp(1rem, 4vw, 1.4rem);
+    color: #555;
+    margin-top: 4px;
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    border: none;
+    border-radius: 16px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    padding: 14px 32px;
+    letter-spacing: 0.05em;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .btn:active { transform: scale(0.95); }
+  .btn-primary {
+    background: linear-gradient(135deg, #FF6B35, #FF8E53);
+    color: white;
+    box-shadow: 0 4px 12px rgba(255,107,53,0.4);
+  }
+  .btn-primary:hover { box-shadow: 0 6px 16px rgba(255,107,53,0.5); }
+  .btn-secondary {
+    background: linear-gradient(135deg, #4ECDC4, #44B5AD);
+    color: white;
+    box-shadow: 0 4px 12px rgba(78,205,196,0.4);
+  }
+  .btn-secondary:hover { box-shadow: 0 6px 16px rgba(78,205,196,0.5); }
+  .btn-outline {
+    background: white;
+    color: #555;
+    border: 2px solid #ddd;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+  .btn-lg { font-size: 1.3rem; padding: 18px 40px; border-radius: 20px; }
+  .btn-sm { font-size: 0.9rem; padding: 8px 18px; border-radius: 10px; }
+
+  /* ===== CARD / PANEL ===== */
+  .panel {
+    background: white;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    width: 100%;
+  }
+  .panel h2 {
+    text-align: center;
+    font-size: 1.4rem;
+    color: #333;
+    margin-bottom: 16px;
+  }
+
+  /* ===== LEVEL SELECT ===== */
+  .level-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    width: 100%;
+  }
+  .level-btn {
+    border: none;
+    border-radius: 16px;
+    padding: 20px 8px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .level-btn:active { transform: scale(0.95); }
+  .level-btn .level-icon { font-size: 2rem; }
+  .level-btn .level-name { font-size: 1.1rem; font-weight: 700; }
+  .level-btn .level-desc { font-size: 0.72rem; color: #666; text-align: center; line-height: 1.4; }
+  .level-btn.beginner { background: linear-gradient(135deg, #FFEAA7, #FDCB6E); box-shadow: 0 4px 12px rgba(253,203,110,0.5); }
+  .level-btn.intermediate { background: linear-gradient(135deg, #74B9FF, #0984E3); color: white; box-shadow: 0 4px 12px rgba(9,132,227,0.4); }
+  .level-btn.intermediate .level-desc { color: rgba(255,255,255,0.85); }
+  .level-btn.advanced { background: linear-gradient(135deg, #FD79A8, #E84393); color: white; box-shadow: 0 4px 12px rgba(232,67,147,0.4); }
+  .level-btn.advanced .level-desc { color: rgba(255,255,255,0.85); }
+
+  /* ===== MODE SELECT ===== */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+  }
+  .mode-btn {
+    border: none;
+    border-radius: 20px;
+    padding: 24px 16px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .mode-btn:active { transform: scale(0.95); }
+  .mode-btn .mode-icon { font-size: 2.8rem; }
+  .mode-btn .mode-name { font-size: 1.1rem; font-weight: 700; }
+  .mode-btn .mode-desc { font-size: 0.78rem; text-align: center; line-height: 1.4; }
+  .mode-btn.timeattack { background: linear-gradient(135deg, #FF7675, #D63031); color: white; box-shadow: 0 4px 14px rgba(214,48,49,0.4); }
+  .mode-btn.timeattack .mode-desc { color: rgba(255,255,255,0.85); }
+  .mode-btn.free { background: linear-gradient(135deg, #55EFC4, #00B894); color: white; box-shadow: 0 4px 14px rgba(0,184,148,0.4); }
+  .mode-btn.free .mode-desc { color: rgba(255,255,255,0.85); }
+
+  /* ===== GAME SCREEN ===== */
+  #game-screen { gap: 12px; }
+
+  .game-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0 4px;
+  }
+  .game-header .level-badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: white;
+  }
+  .badge-beginner { background: linear-gradient(135deg, #FDCB6E, #e17055); }
+  .badge-intermediate { background: linear-gradient(135deg, #74B9FF, #0984E3); }
+  .badge-advanced { background: linear-gradient(135deg, #FD79A8, #E84393); }
+
+  .score-area {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .score-box {
+    text-align: center;
+    background: white;
+    border-radius: 12px;
+    padding: 6px 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .score-box .score-label { font-size: 0.68rem; color: #888; }
+  .score-box .score-val { font-size: 1.3rem; font-weight: 800; color: #333; }
+
+  /* タイマー */
+  .timer-ring {
+    position: relative;
+    width: 60px;
+    height: 60px;
+  }
+  .timer-ring svg { transform: rotate(-90deg); }
+  .timer-ring .timer-bg { fill: none; stroke: #eee; stroke-width: 5; }
+  .timer-ring .timer-arc { fill: none; stroke: #FF6B35; stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 0.1s linear; }
+  .timer-ring .timer-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #333;
+  }
+  .timer-ring.urgent .timer-arc { stroke: #e74c3c; }
+  .timer-ring.urgent .timer-text { color: #e74c3c; }
+
+  /* フリーモード正解数 */
+  .free-score {
+    background: white;
+    border-radius: 12px;
+    padding: 6px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #333;
+  }
+  .free-score span { color: #00B894; }
+
+  /* 問題カード */
+  .problem-panel {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    width: 100%;
+    text-align: center;
+  }
+  .problem-label {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 12px;
+  }
+  .cards-area {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .num-card {
+    width: 62px;
+    height: 72px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: 900;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.15s, box-shadow 0.1s;
+    border: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+  }
+  .num-card:active { transform: scale(0.92); }
+  .num-card.used {
+    opacity: 0.35;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+  .num-card.c0 { background: linear-gradient(135deg, #FF6B35, #FF8E53); color: white; box-shadow: 0 4px 10px rgba(255,107,53,0.4); }
+  .num-card.c1 { background: linear-gradient(135deg, #FFBE0B, #FFD54F); color: #333; box-shadow: 0 4px 10px rgba(255,190,11,0.4); }
+  .num-card.c2 { background: linear-gradient(135deg, #3A86FF, #74B9FF); color: white; box-shadow: 0 4px 10px rgba(58,134,255,0.4); }
+  .num-card.c3 { background: linear-gradient(135deg, #8338EC, #B388FF); color: white; box-shadow: 0 4px 10px rgba(131,56,236,0.4); }
+  .num-card.c4 { background: linear-gradient(135deg, #06D6A0, #55EFC4); color: #333; box-shadow: 0 4px 10px rgba(6,214,160,0.4); }
+
+  /* 式エリア */
+  .expr-panel {
+    background: white;
+    border-radius: 20px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    width: 100%;
+  }
+  .expr-display {
+    min-height: 52px;
+    background: #F8F9FA;
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    min-width: 0;
+    word-break: break-all;
+    position: relative;
+  }
+  .expr-display .expr-placeholder {
+    color: #ccc;
+    font-size: 1rem;
+    font-weight: 400;
+  }
+  .expr-result {
+    text-align: right;
+    font-size: 0.9rem;
+    color: #888;
+    margin-top: 6px;
+    min-height: 20px;
+  }
+  .expr-result.valid { color: #00B894; font-weight: 700; }
+  .expr-result.invalid { color: #e74c3c; }
+
+  /* 演算子ボタン */
+  .ops-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  .op-btn {
+    width: 52px;
+    height: 52px;
+    border: none;
+    border-radius: 14px;
+    font-size: 1.4rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    background: linear-gradient(135deg, #FFA552, #FF7675);
+    color: white;
+    box-shadow: 0 3px 8px rgba(255,118,117,0.4);
+  }
+  .op-btn:active { transform: scale(0.90); }
+  .op-btn.paren { background: linear-gradient(135deg, #A29BFE, #6C5CE7); box-shadow: 0 3px 8px rgba(108,92,231,0.4); }
+  .op-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* アクションボタン行 */
+  .action-row {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    margin-top: 4px;
+  }
+  .action-row .btn { flex: 1; }
+  .btn-backspace {
+    background: linear-gradient(135deg, #DFE6E9, #B2BEC3);
+    color: #333;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+  }
+  .btn-clear {
+    background: linear-gradient(135deg, #FFEAA7, #FDCB6E);
+    color: #333;
+    box-shadow: 0 3px 8px rgba(253,203,110,0.4);
+  }
+  .btn-submit {
+    background: linear-gradient(135deg, #00B894, #55EFC4);
+    color: white;
+    box-shadow: 0 3px 8px rgba(0,184,148,0.4);
+  }
+  .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ギブアップ/ヒント行 */
+  .hint-row {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+  }
+  .btn-hint {
+    background: linear-gradient(135deg, #74B9FF, #0984E3);
+    color: white;
+    box-shadow: 0 3px 8px rgba(9,132,227,0.3);
+  }
+  .btn-giveup {
+    background: white;
+    color: #888;
+    border: 2px solid #ddd;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+
+  /* フィードバックオーバーレイ */
+  .feedback-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .feedback-overlay.show { opacity: 1; pointer-events: all; }
+  .feedback-overlay .feedback-bg {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+  }
+  .feedback-box {
+    position: relative;
+    background: white;
+    border-radius: 24px;
+    padding: 32px 40px;
+    text-align: center;
+    max-width: 340px;
+    width: 90%;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+  }
+  .feedback-box .feedback-icon { font-size: 3.5rem; margin-bottom: 8px; }
+  .feedback-box .feedback-title { font-size: 1.8rem; font-weight: 900; margin-bottom: 8px; }
+  .feedback-box.correct .feedback-title { color: #00B894; }
+  .feedback-box.wrong .feedback-title { color: #e74c3c; }
+  .feedback-box .feedback-solution {
+    font-size: 1rem;
+    color: #666;
+    background: #F8F9FA;
+    border-radius: 12px;
+    padding: 10px 16px;
+    margin: 12px 0;
+  }
+  .feedback-box .feedback-solution strong { color: #333; font-size: 1.05rem; }
+  .feedback-box .btn { width: 100%; margin-top: 8px; }
+
+  /* 星アニメーション */
+  .star-burst {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 99;
+    overflow: hidden;
+  }
+  .star {
+    position: absolute;
+    font-size: 1.5rem;
+    animation: starFly 0.8s ease-out forwards;
+  }
+  @keyframes starFly {
+    0% { transform: translate(0,0) scale(0); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(1.5); opacity: 0; }
+  }
+
+  /* ===== RESULT SCREEN ===== */
+  .result-panel {
+    background: white;
+    border-radius: 24px;
+    padding: 32px 28px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    width: 100%;
+  }
+  .result-panel .result-icon { font-size: 4rem; margin-bottom: 8px; }
+  .result-panel h2 { font-size: 1.6rem; color: #333; margin-bottom: 20px; }
+  .result-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .result-stat {
+    background: #F8F9FA;
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .result-stat .stat-label { font-size: 0.78rem; color: #888; margin-bottom: 4px; }
+  .result-stat .stat-val { font-size: 2rem; font-weight: 900; color: #333; }
+  .result-stat .stat-val.highlight { color: #FF6B35; }
+  .result-stat .stat-val.new-record { color: #FFD700; }
+  .new-record-badge {
+    background: linear-gradient(135deg, #FFD700, #FFA502);
+    color: white;
+    border-radius: 20px;
+    padding: 6px 18px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    display: inline-block;
+    margin-bottom: 16px;
+  }
+  .result-btns { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ヒントテキスト */
+  .hint-text {
+    background: #EEF9FF;
+    border-left: 4px solid #74B9FF;
+    border-radius: 0 10px 10px 0;
+    padding: 10px 14px;
+    font-size: 0.88rem;
+    color: #0984E3;
+    text-align: left;
+    width: 100%;
+    display: none;
+  }
+  .hint-text.show { display: block; }
+
+  /* レスポンシブ調整 */
+  @media (max-width: 380px) {
+    .num-card { width: 54px; height: 64px; font-size: 1.5rem; }
+    .op-btn { width: 44px; height: 44px; font-size: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== タイトル画面 ===== -->
+<div id="title-screen" class="screen active">
+  <div class="title-logo">
+    <h1>Make 10</h1>
+    <p class="subtitle">数字カードで 10 をつくろう！</p>
+  </div>
+  <div class="panel" style="text-align:center;">
+    <p style="color:#666; font-size:0.95rem; line-height:1.7; margin-bottom:16px;">
+      与えられた数字カードを<br>
+      <strong>すべて使って</strong> 10 を作るゲームだよ。<br>
+      ＋ − × ÷ と（）を使おう！
+    </p>
+    <button class="btn btn-primary btn-lg" onclick="showScreen('level-screen')">はじめる ▶</button>
+  </div>
+  <div style="display:flex; gap:16px; font-size:0.82rem; color:#aaa;">
+    <span>🌟 ハイスコア記録あり</span>
+    <span>📱 スマホ対応</span>
+  </div>
+</div>
+
+<!-- ===== レベル選択画面 ===== -->
+<div id="level-screen" class="screen">
+  <div style="text-align:center;">
+    <h2 style="font-size:1.5rem; color:#333;">レベルを選んでね</h2>
+  </div>
+  <div class="level-grid">
+    <button class="level-btn beginner" onclick="selectLevel('初級')">
+      <span class="level-icon">⭐</span>
+      <span class="level-name">初級</span>
+      <span class="level-desc">カード3枚<br>1〜5の数字<br>＋−のみ</span>
+    </button>
+    <button class="level-btn intermediate" onclick="selectLevel('中級')">
+      <span class="level-icon">⭐⭐</span>
+      <span class="level-name">中級</span>
+      <span class="level-desc">カード4枚<br>1〜9の数字<br>＋−×÷</span>
+    </button>
+    <button class="level-btn advanced" onclick="selectLevel('上級')">
+      <span class="level-icon">⭐⭐⭐</span>
+      <span class="level-name">上級</span>
+      <span class="level-desc">カード5枚<br>1〜99の数字<br>（）も使える</span>
+    </button>
+  </div>
+  <button class="btn btn-outline btn-sm" onclick="showScreen('title-screen')">← もどる</button>
+</div>
+
+<!-- ===== モード選択画面 ===== -->
+<div id="mode-screen" class="screen">
+  <div style="text-align:center;">
+    <h2 style="font-size:1.5rem; color:#333;">モードを選んでね</h2>
+  </div>
+  <div class="mode-grid">
+    <button class="mode-btn timeattack" onclick="startGame('timeattack')">
+      <span class="mode-icon">⏱️</span>
+      <span class="mode-name">タイムアタック</span>
+      <span class="mode-desc">90秒で<br>何問解けるか！</span>
+    </button>
+    <button class="mode-btn free" onclick="startGame('free')">
+      <span class="mode-icon">🎯</span>
+      <span class="mode-name">フリーモード</span>
+      <span class="mode-desc">じっくり<br>練習しよう</span>
+    </button>
+  </div>
+  <div id="highscore-display" style="font-size:0.85rem; color:#888; text-align:center;"></div>
+  <button class="btn btn-outline btn-sm" onclick="showScreen('level-screen')">← もどる</button>
+</div>
+
+<!-- ===== ゲーム画面 ===== -->
+<div id="game-screen" class="screen">
+
+  <div class="game-header">
+    <span id="level-badge" class="level-badge"></span>
+    <div class="score-area">
+      <div id="timer-area"></div>
+    </div>
+  </div>
+
+  <!-- 問題パネル -->
+  <div class="problem-panel">
+    <div class="problem-label">このカードをすべて使って <strong>10</strong> を作ろう！</div>
+    <div id="cards-area" class="cards-area"></div>
+  </div>
+
+  <!-- 式パネル -->
+  <div class="expr-panel">
+    <div id="expr-display" class="expr-display">
+      <span class="expr-placeholder">カードをタップして式を作ろう</span>
+    </div>
+    <div id="expr-result" class="expr-result"></div>
+
+    <!-- 演算子ボタン -->
+    <div id="ops-row" class="ops-row"></div>
+
+    <!-- アクションボタン -->
+    <div class="action-row" style="margin-top:12px;">
+      <button class="btn btn-backspace" onclick="backspace()">⌫</button>
+      <button class="btn btn-clear" onclick="clearExpr()">クリア</button>
+      <button id="submit-btn" class="btn btn-submit" onclick="submitAnswer()">こたえる！</button>
+    </div>
+  </div>
+
+  <!-- ヒント/ギブアップ -->
+  <div class="hint-row">
+    <button id="hint-btn" class="btn btn-hint btn-sm" onclick="showHint()" style="display:none;">💡 ヒント</button>
+    <button class="btn btn-giveup btn-sm" onclick="giveUp()">ギブアップ</button>
+  </div>
+  <div id="hint-text" class="hint-text"></div>
+
+</div>
+
+<!-- ===== リザルト画面 ===== -->
+<div id="result-screen" class="screen">
+  <div class="result-panel">
+    <div class="result-icon" id="result-icon">🎉</div>
+    <h2 id="result-title">結果</h2>
+    <div id="new-record-badge" class="new-record-badge" style="display:none;">🏆 新記録！</div>
+    <div class="result-stats">
+      <div class="result-stat">
+        <div class="stat-label" id="stat-label1">正解数</div>
+        <div class="stat-val highlight" id="stat-val1">0</div>
+      </div>
+      <div class="result-stat">
+        <div class="stat-label" id="stat-label2">ハイスコア</div>
+        <div class="stat-val new-record" id="stat-val2">0</div>
+      </div>
+    </div>
+    <div class="result-btns">
+      <button class="btn btn-primary" onclick="startGame(currentMode)">もう一度！</button>
+      <button class="btn btn-secondary" onclick="showScreen('mode-screen')">モード選択へ</button>
+      <button class="btn btn-outline" onclick="showScreen('level-screen')">レベル選択へ</button>
+    </div>
+  </div>
+</div>
+
+<!-- フィードバックオーバーレイ -->
+<div id="feedback-overlay" class="feedback-overlay">
+  <div class="feedback-bg" onclick="closeFeedback()"></div>
+  <div id="feedback-box" class="feedback-box">
+    <div id="fb-icon" class="feedback-icon"></div>
+    <div id="fb-title" class="feedback-title"></div>
+    <div id="fb-solution" class="feedback-solution" style="display:none;"></div>
+    <button class="btn btn-primary" onclick="closeFeedback()">つぎへ ▶</button>
+  </div>
+</div>
+
+<!-- 星バースト用 -->
+<div id="star-burst" class="star-burst"></div>
+
+<script>
+// ============================================================
+//  設定
+// ============================================================
+const LEVEL_CONFIG = {
+  '初級': { cardCount: 3, minNum: 1, maxNum: 5,  ops: ['+', '-'],           hasHint: true  },
+  '中級': { cardCount: 4, minNum: 1, maxNum: 9,  ops: ['+', '-', '*', '/'], hasHint: false },
+  '上級': { cardCount: 5, minNum: 1, maxNum: 99, ops: ['+', '-', '*', '/'], hasHint: false },
+};
+const OP_LABELS = { '+': '＋', '-': '−', '*': '×', '/': '÷' };
+const TIME_LIMIT = 90;
+
+// ============================================================
+//  ゲーム状態
+// ============================================================
+let currentLevel = '中級';
+let currentMode  = 'free';
+let currentProblem = null; // { numbers, solution }
+let tokens = [];           // { type:'number'|'op'|'paren', value, cardIndex? }
+let usedCards = [];        // bool[]
+let score = 0;
+let timerValue = TIME_LIMIT;
+let timerInterval = null;
+let gameActive = false;
+
+// ============================================================
+//  画面遷移
+// ============================================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'mode-screen') renderHighscores();
+}
+
+function selectLevel(level) {
+  currentLevel = level;
+  showScreen('mode-screen');
+}
+
+function renderHighscores() {
+  const ta = getHighscore('timeattack');
+  const fr = getHighscore('free');
+  const el = document.getElementById('highscore-display');
+  el.innerHTML = `${currentLevel}のハイスコア ｜ ⏱️ タイムアタック: <b>${ta}</b>問 ／ 🎯 フリー: <b>${fr}</b>問`;
+}
+
+// ============================================================
+//  ハイスコア
+// ============================================================
+function getHighscore(mode) {
+  return parseInt(localStorage.getItem(`make10_hs_${currentLevel}_${mode}`) || '0');
+}
+function saveHighscore(mode, val) {
+  const key = `make10_hs_${currentLevel}_${mode}`;
+  const prev = getHighscore(mode);
+  if (val > prev) { localStorage.setItem(key, val); return true; }
+  return false;
+}
+
+// ============================================================
+//  ゲーム開始
+// ============================================================
+function startGame(mode) {
+  currentMode = mode;
+  score = 0;
+  gameActive = true;
+  clearInterval(timerInterval);
+  showScreen('game-screen');
+  renderGameHeader();
+  generateAndRender();
+  if (mode === 'timeattack') startTimer();
+}
+
+function renderGameHeader() {
+  const badge = document.getElementById('level-badge');
+  const badgeClass = { '初級': 'badge-beginner', '中級': 'badge-intermediate', '上級': 'badge-advanced' }[currentLevel];
+  badge.className = `level-badge ${badgeClass}`;
+  badge.textContent = `${currentLevel}`;
+
+  const timerArea = document.getElementById('timer-area');
+  if (currentMode === 'timeattack') {
+    timerArea.innerHTML = `
+      <div class="timer-ring" id="timer-ring">
+        <svg width="60" height="60" viewBox="0 0 60 60">
+          <circle class="timer-bg" cx="30" cy="30" r="26"/>
+          <circle class="timer-arc" id="timer-arc" cx="30" cy="30" r="26"
+            stroke-dasharray="${2 * Math.PI * 26}"
+            stroke-dashoffset="0"/>
+        </svg>
+        <div class="timer-text" id="timer-text">${TIME_LIMIT}</div>
+      </div>`;
+    updateTimerDisplay();
+  } else {
+    timerArea.innerHTML = `<div class="free-score">正解 <span id="free-score-val">0</span> 問</div>`;
+  }
+}
+
+// ============================================================
+//  タイマー
+// ============================================================
+function startTimer() {
+  timerValue = TIME_LIMIT;
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    timerValue--;
+    updateTimerDisplay();
+    if (timerValue <= 0) {
+      clearInterval(timerInterval);
+      gameActive = false;
+      showResult();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const textEl = document.getElementById('timer-text');
+  const arcEl  = document.getElementById('timer-arc');
+  const ringEl = document.getElementById('timer-ring');
+  if (!textEl) return;
+  textEl.textContent = timerValue;
+  const r = 26, circ = 2 * Math.PI * r;
+  const offset = circ * (1 - timerValue / TIME_LIMIT);
+  arcEl.style.strokeDashoffset = offset;
+  if (timerValue <= 15) ringEl.classList.add('urgent');
+  else ringEl.classList.remove('urgent');
+}
+
+// ============================================================
+//  問題生成
+// ============================================================
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function generateProblem() {
+  const cfg = LEVEL_CONFIG[currentLevel];
+  let numbers, solution;
+  let attempts = 0;
+  do {
+    numbers = Array.from({ length: cfg.cardCount }, () => randomInt(cfg.minNum, cfg.maxNum));
+    solution = solve(numbers.map(v => ({ value: v, expr: String(v) })), cfg.ops);
+    attempts++;
+    if (attempts > 2000) break; // 無限ループ防止（理論上ほぼ起きない）
+  } while (!solution);
+  return { numbers, solution };
+}
+
+// ============================================================
+//  ソルバー（再帰DFS）
+// ============================================================
+function applyOp(a, op, b) {
+  if (op === '+') return a + b;
+  if (op === '-') return a - b;
+  if (op === '*') return a * b;
+  if (op === '/') {
+    if (Math.abs(b) < 1e-9) return null; // ÷0
+    return a / b;
+  }
+  return null;
+}
+
+function needsParen(expr, op, side) {
+  // 掛け算・割り算の場合、+か-を含む式は括弧が必要
+  if ((op === '*' || op === '/') && (expr.includes('+') || expr.includes('-'))) {
+    return true;
+  }
+  // 割り算の右側
+  if (op === '/' && side === 'right' && (expr.includes('*') || expr.includes('/') || expr.includes('+') || expr.includes('-'))) {
+    return true;
+  }
+  // 引き算の右側に+か-を含む
+  if (op === '-' && side === 'right' && (expr.includes('+') || expr.includes('-'))) {
+    return true;
+  }
+  return false;
+}
+
+function wrapExpr(leftExpr, op, rightExpr) {
+  const opLabel = OP_LABELS[op] || op;
+  const l = needsParen(leftExpr, op, 'left')   ? `(${leftExpr})` : leftExpr;
+  const r = needsParen(rightExpr, op, 'right') ? `(${rightExpr})` : rightExpr;
+  return `${l}${opLabel}${r}`;
+}
+
+function solve(items, ops, target = 10) {
+  if (items.length === 1) {
+    return Math.abs(items[0].value - target) < 1e-9 ? items[0].expr : null;
+  }
+  for (let i = 0; i < items.length; i++) {
+    for (let j = 0; j < items.length; j++) {
+      if (i === j) continue;
+      for (const op of ops) {
+        const val = applyOp(items[i].value, op, items[j].value);
+        if (val === null) continue;
+        const expr = wrapExpr(items[i].expr, op, items[j].expr);
+        const rest = items.filter((_, k) => k !== i && k !== j);
+        rest.push({ value: val, expr });
+        const result = solve(rest, ops, target);
+        if (result) return result;
+      }
+    }
+  }
+  return null;
+}
+
+// ============================================================
+//  問題描画
+// ============================================================
+function generateAndRender() {
+  clearExprState();
+  currentProblem = generateProblem();
+  usedCards = new Array(currentProblem.numbers.length).fill(false);
+  renderCards();
+  renderOps();
+  renderExpr();
+  document.getElementById('hint-text').classList.remove('show');
+  document.getElementById('hint-text').textContent = '';
+
+  const cfg = LEVEL_CONFIG[currentLevel];
+  const hintBtn = document.getElementById('hint-btn');
+  if (cfg.hasHint) { hintBtn.style.display = ''; hintBtn.disabled = false; hintBtn.textContent = '💡 ヒント'; }
+  else { hintBtn.style.display = 'none'; }
+}
+
+function renderCards() {
+  const area = document.getElementById('cards-area');
+  area.innerHTML = '';
+  currentProblem.numbers.forEach((num, i) => {
+    const btn = document.createElement('button');
+    btn.className = `num-card c${i % 5}`;
+    btn.textContent = num;
+    btn.id = `card-${i}`;
+    btn.onclick = () => tapCard(i);
+    area.appendChild(btn);
+  });
+}
+
+function renderOps() {
+  const cfg = LEVEL_CONFIG[currentLevel];
+  const row = document.getElementById('ops-row');
+  row.innerHTML = '';
+  cfg.ops.forEach(op => {
+    const btn = document.createElement('button');
+    btn.className = 'op-btn';
+    btn.textContent = OP_LABELS[op];
+    btn.dataset.op = op;
+    btn.onclick = () => tapOp(op);
+    row.appendChild(btn);
+  });
+  // 上級は括弧も追加
+  if (currentLevel === '上級') {
+    ['(', ')'].forEach(p => {
+      const btn = document.createElement('button');
+      btn.className = 'op-btn paren';
+      btn.textContent = p;
+      btn.dataset.op = p;
+      btn.onclick = () => tapOp(p);
+      row.appendChild(btn);
+    });
+  }
+}
+
+// ============================================================
+//  式の構築
+// ============================================================
+function tapCard(idx) {
+  if (!gameActive) return;
+  if (usedCards[idx]) return;
+  usedCards[idx] = true;
+  tokens.push({ type: 'number', value: currentProblem.numbers[idx], cardIndex: idx });
+  document.getElementById(`card-${idx}`).classList.add('used');
+  renderExpr();
+}
+
+function tapOp(op) {
+  if (!gameActive) return;
+  tokens.push({ type: 'op', value: op });
+  renderExpr();
+}
+
+function backspace() {
+  if (!tokens.length) return;
+  const last = tokens.pop();
+  if (last.type === 'number') {
+    usedCards[last.cardIndex] = false;
+    document.getElementById(`card-${last.cardIndex}`).classList.remove('used');
+  }
+  renderExpr();
+}
+
+function clearExprState() {
+  tokens = [];
+  if (currentProblem) {
+    usedCards = new Array(currentProblem.numbers.length).fill(false);
+  }
+}
+
+function clearExpr() {
+  clearExprState();
+  document.querySelectorAll('.num-card').forEach(c => c.classList.remove('used'));
+  renderExpr();
+}
+
+function renderExpr() {
+  const display = document.getElementById('expr-display');
+  const resultEl = document.getElementById('expr-result');
+
+  if (tokens.length === 0) {
+    display.innerHTML = '<span class="expr-placeholder">カードをタップして式を作ろう</span>';
+    resultEl.textContent = '';
+    resultEl.className = 'expr-result';
+    return;
+  }
+
+  // 表示用テキスト
+  const exprStr = tokens.map(t => {
+    if (t.type === 'number') return String(t.value);
+    return OP_LABELS[t.value] || t.value;
+  }).join(' ');
+  display.textContent = exprStr;
+
+  // eval用の文字列（×→* ÷→/ ＋→+ −→-）
+  const evalStr = buildEvalStr();
+  let evalResult = null;
+  try { evalResult = Function('"use strict"; return (' + evalStr + ')')(); } catch(e) {}
+
+  const allUsed = usedCards.every(u => u);
+
+  if (evalResult !== null && !isNaN(evalResult) && isFinite(evalResult)) {
+    if (Math.abs(evalResult - 10) < 1e-9 && allUsed) {
+      resultEl.textContent = `= ${formatNum(evalResult)} ✓`;
+      resultEl.className = 'expr-result valid';
+    } else {
+      resultEl.textContent = `= ${formatNum(evalResult)}`;
+      resultEl.className = 'expr-result';
+    }
+  } else {
+    resultEl.textContent = '';
+    resultEl.className = 'expr-result';
+  }
+}
+
+function buildEvalStr() {
+  return tokens.map(t => {
+    if (t.type === 'number') return String(t.value);
+    const v = t.value;
+    if (v === '＋' || v === '+') return '+';
+    if (v === '−' || v === '-') return '-';
+    if (v === '×' || v === '*') return '*';
+    if (v === '÷' || v === '/') return '/';
+    return v; // ( )
+  }).join('');
+}
+
+function formatNum(n) {
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(4).replace(/\.?0+$/, '');
+}
+
+// ============================================================
+//  答え合わせ
+// ============================================================
+function submitAnswer() {
+  if (!gameActive && currentMode === 'timeattack') return;
+  const evalStr = buildEvalStr();
+  let result = null;
+  try { result = Function('"use strict"; return (' + evalStr + ')')(); } catch(e) {}
+
+  const allUsed = usedCards.every(u => u);
+
+  if (result !== null && Math.abs(result - 10) < 1e-9 && allUsed) {
+    onCorrect();
+  } else {
+    onWrong();
+  }
+}
+
+function onCorrect() {
+  score++;
+  if (currentMode === 'free') {
+    document.getElementById('free-score-val').textContent = score;
+  }
+  showStarBurst();
+  showFeedback(true, null);
+}
+
+function onWrong() {
+  showFeedback(false, currentProblem.solution);
+}
+
+function giveUp() {
+  showFeedback(false, currentProblem.solution);
+}
+
+// ============================================================
+//  ヒント
+// ============================================================
+function showHint() {
+  const cfg = LEVEL_CONFIG[currentLevel];
+  if (!cfg.hasHint) return;
+  const nums = currentProblem.numbers;
+  const hintEl = document.getElementById('hint-text');
+  const hintBtn = document.getElementById('hint-btn');
+
+  // ヒント: 最初の演算子を教える
+  const sol = currentProblem.solution;
+  let hint = `ヒント：解答例は「${sol}」だよ！`;
+  // 初級なのでシンプルに数字の並び方だけヒント
+  const bigger = nums.filter(n => n >= 3).length;
+  if (bigger >= 2) hint = `ヒント: 大きい数どうしを足したり引いたりしてみよう！`;
+  else hint = `ヒント: 足し算や引き算をいろいろ試してみよう！`;
+
+  hintEl.textContent = hint;
+  hintEl.classList.add('show');
+  hintBtn.disabled = true;
+  hintBtn.textContent = '💡 表示中';
+}
+
+// ============================================================
+//  フィードバックオーバーレイ
+// ============================================================
+function showFeedback(correct, solution) {
+  const overlay = document.getElementById('feedback-overlay');
+  const box = document.getElementById('feedback-box');
+  const iconEl = document.getElementById('fb-icon');
+  const titleEl = document.getElementById('fb-title');
+  const solEl = document.getElementById('fb-solution');
+
+  if (correct) {
+    box.className = 'feedback-box correct';
+    iconEl.textContent = ['🎉','✨','⭐','🌟','🎊'][Math.floor(Math.random()*5)];
+    titleEl.textContent = ['せいかい！','すごい！','やったね！','正解！','かんぺき！'][Math.floor(Math.random()*5)];
+    solEl.style.display = 'none';
+  } else {
+    box.className = 'feedback-box wrong';
+    iconEl.textContent = '😮';
+    titleEl.textContent = 'ざんねん…';
+    if (solution) {
+      solEl.style.display = '';
+      solEl.innerHTML = `解答例：<strong>${solution}</strong>`;
+    } else {
+      solEl.style.display = 'none';
+    }
+  }
+  overlay.classList.add('show');
+}
+
+function closeFeedback() {
+  document.getElementById('feedback-overlay').classList.remove('show');
+  if (!gameActive && currentMode === 'timeattack') {
+    showResult();
+    return;
+  }
+  generateAndRender();
+}
+
+// ============================================================
+//  星エフェクト
+// ============================================================
+function showStarBurst() {
+  const burst = document.getElementById('star-burst');
+  burst.innerHTML = '';
+  const emojis = ['⭐','✨','🌟','💫','🎉'];
+  const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+  for (let i = 0; i < 12; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.textContent = emojis[i % emojis.length];
+    const angle = (i / 12) * 2 * Math.PI;
+    const dist = 80 + Math.random() * 80;
+    star.style.left = cx + 'px';
+    star.style.top = cy + 'px';
+    star.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+    star.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+    star.style.animationDelay = (Math.random() * 0.15) + 's';
+    burst.appendChild(star);
+  }
+  setTimeout(() => { burst.innerHTML = ''; }, 1000);
+}
+
+// ============================================================
+//  リザルト画面
+// ============================================================
+function showResult() {
+  clearInterval(timerInterval);
+  gameActive = false;
+
+  const isNew = saveHighscore(currentMode, score);
+  const hs = getHighscore(currentMode);
+
+  const iconEl = document.getElementById('result-icon');
+  const titleEl = document.getElementById('result-title');
+  const badge = document.getElementById('new-record-badge');
+  const lbl1 = document.getElementById('stat-label1');
+  const val1 = document.getElementById('stat-val1');
+  const lbl2 = document.getElementById('stat-label2');
+  const val2 = document.getElementById('stat-val2');
+
+  if (currentMode === 'timeattack') {
+    iconEl.textContent = score >= 5 ? '🏆' : score >= 3 ? '⭐' : '😤';
+    titleEl.textContent = `タイムアタック結果 (${currentLevel})`;
+    lbl1.textContent = '正解数';
+    val1.textContent = score + '問';
+    lbl2.textContent = 'ハイスコア';
+    val2.textContent = hs + '問';
+  } else {
+    iconEl.textContent = '🎯';
+    titleEl.textContent = `フリーモード結果 (${currentLevel})`;
+    lbl1.textContent = '正解数';
+    val1.textContent = score + '問';
+    lbl2.textContent = 'ベスト';
+    val2.textContent = hs + '問';
+  }
+
+  badge.style.display = isNew && score > 0 ? '' : 'none';
+  showScreen('result-screen');
+}
+</script>
+</body>
+</html>
+
