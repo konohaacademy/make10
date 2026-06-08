@@ -494,6 +494,80 @@
   }
   .hint-text.show { display: block; }
 
+  /* ===== タイムアタック フラッシュ / シェイク ===== */
+  @keyframes flashCorrect {
+    0%   { background: white; }
+    25%  { background: #d4f5e9; box-shadow: 0 4px 24px rgba(0,184,148,0.4); }
+    100% { background: white; }
+  }
+  @keyframes shakeWrong {
+    0%,100% { transform: translateX(0); background: white; }
+    15%     { transform: translateX(-8px); background: #fff0f0; }
+    35%     { transform: translateX(8px); }
+    55%     { transform: translateX(-5px); }
+    75%     { transform: translateX(5px); }
+    90%     { transform: translateX(-2px); }
+  }
+  .problem-panel.flash-correct { animation: flashCorrect 0.7s ease-out forwards; }
+  .problem-panel.shake-wrong   { animation: shakeWrong  0.45s ease-out forwards; }
+
+  /* タイムアタック スコア表示（ヘッダー） */
+  .ta-header-score {
+    background: white;
+    border-radius: 12px;
+    padding: 5px 12px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .ta-header-score .score-label { font-size: 0.65rem; color: #888; }
+  .ta-header-score .score-val   { font-size: 1.25rem; font-weight: 800; color: #FF6B35; }
+
+  /* ===== 復習セクション ===== */
+  .review-section { width: 100%; margin-top: 20px; }
+  .review-toggle {
+    width: 100%;
+    background: #FFF9E6;
+    border: 2px solid #FDCB6E;
+    border-radius: 14px;
+    padding: 12px 16px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #856404;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s;
+  }
+  .review-toggle:hover { background: #FFF3CD; }
+  .review-list { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+  .review-card {
+    background: #FFFDF5;
+    border: 2px solid #FDCB6E;
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .review-card-nums {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .review-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 42px;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: white;
+  }
+  .review-solution {
+    font-size: 0.95rem;
+    color: #555;
+  }
+  .review-solution strong { color: #e84393; font-size: 1.05rem; }
+
   /* レスポンシブ調整 */
   @media (max-width: 380px) {
     .num-card { width: 54px; height: 64px; font-size: 1.5rem; }
@@ -532,7 +606,7 @@
     <button class="level-btn beginner" onclick="selectLevel('初級')">
       <span class="level-icon">⭐</span>
       <span class="level-name">初級</span>
-      <span class="level-desc">カード3枚<br>1〜9の数字<br>＋−のみ</span>
+      <span class="level-desc">カード4枚<br>1〜9の数字<br>＋−のみ</span>
     </button>
     <button class="level-btn intermediate" onclick="selectLevel('中級')">
       <span class="level-icon">⭐⭐</span>
@@ -633,6 +707,7 @@
       <button class="btn btn-secondary" onclick="showScreen('mode-screen')">モード選択へ</button>
       <button class="btn btn-outline" onclick="showScreen('level-screen')">レベル選択へ</button>
     </div>
+    <div id="review-section" class="review-section" style="display:none;"></div>
   </div>
 </div>
 
@@ -655,7 +730,7 @@
 //  設定
 // ============================================================
 const LEVEL_CONFIG = {
-  '初級': { cardCount: 3, minNum: 1, maxNum: 9,  ops: ['+', '-'],           hasHint: true  },
+  '初級': { cardCount: 4, minNum: 1, maxNum: 9,  ops: ['+', '-'],           hasHint: true  },
   '中級': { cardCount: 4, minNum: 1, maxNum: 9,  ops: ['+', '-', '*', '/'], hasHint: false },
   '上級': { cardCount: 5, minNum: 1, maxNum: 99, ops: ['+', '-', '*', '/'], hasHint: false },
 };
@@ -671,6 +746,7 @@ let currentProblem = null; // { numbers, solution }
 let tokens = [];           // { type:'number'|'op'|'paren', value, cardIndex? }
 let usedCards = [];        // bool[]
 let score = 0;
+let missedProblems = []; // { numbers, solution } タイムアタックで逃した問題
 let timerValue = TIME_LIMIT;
 let timerInterval = null;
 let gameActive = false;
@@ -715,6 +791,7 @@ function saveHighscore(mode, val) {
 function startGame(mode) {
   currentMode = mode;
   score = 0;
+  missedProblems = [];
   gameActive = true;
   clearInterval(timerInterval);
   showScreen('game-screen');
@@ -732,14 +809,20 @@ function renderGameHeader() {
   const timerArea = document.getElementById('timer-area');
   if (currentMode === 'timeattack') {
     timerArea.innerHTML = `
-      <div class="timer-ring" id="timer-ring">
-        <svg width="60" height="60" viewBox="0 0 60 60">
-          <circle class="timer-bg" cx="30" cy="30" r="26"/>
-          <circle class="timer-arc" id="timer-arc" cx="30" cy="30" r="26"
-            stroke-dasharray="${2 * Math.PI * 26}"
-            stroke-dashoffset="0"/>
-        </svg>
-        <div class="timer-text" id="timer-text">${TIME_LIMIT}</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="ta-header-score">
+          <div class="score-label">正解</div>
+          <div class="score-val" id="ta-score-display">0</div>
+        </div>
+        <div class="timer-ring" id="timer-ring">
+          <svg width="60" height="60" viewBox="0 0 60 60">
+            <circle class="timer-bg" cx="30" cy="30" r="26"/>
+            <circle class="timer-arc" id="timer-arc" cx="30" cy="30" r="26"
+              stroke-dasharray="${2 * Math.PI * 26}"
+              stroke-dashoffset="0"/>
+          </svg>
+          <div class="timer-text" id="timer-text">${TIME_LIMIT}</div>
+        </div>
       </div>`;
     updateTimerDisplay();
   } else {
@@ -1022,19 +1105,43 @@ function submitAnswer() {
 
 function onCorrect() {
   score++;
-  if (currentMode === 'free') {
+  if (currentMode === 'timeattack') {
+    const el = document.getElementById('ta-score-display');
+    if (el) el.textContent = score;
+    showStarBurst();
+    flashPanel('correct');
+    setTimeout(() => { if (gameActive) generateAndRender(); }, 700);
+  } else {
     document.getElementById('free-score-val').textContent = score;
+    showStarBurst();
+    showFeedback(true, null);
   }
-  showStarBurst();
-  showFeedback(true, null);
 }
 
 function onWrong() {
-  showFeedback(false, currentProblem.solution);
+  if (currentMode === 'timeattack') {
+    flashPanel('wrong');
+  } else {
+    showFeedback(false, currentProblem.solution);
+  }
 }
 
 function giveUp() {
-  showFeedback(false, currentProblem.solution);
+  if (currentMode === 'timeattack') {
+    missedProblems.push({ numbers: [...currentProblem.numbers], solution: currentProblem.solution });
+    flashPanel('wrong');
+    setTimeout(() => { if (gameActive) generateAndRender(); }, 500);
+  } else {
+    showFeedback(false, currentProblem.solution);
+  }
+}
+
+function flashPanel(type) {
+  const panel = document.querySelector('.problem-panel');
+  panel.classList.remove('flash-correct', 'shake-wrong');
+  void panel.offsetWidth; // reflow でアニメーション再トリガー
+  panel.classList.add(type === 'correct' ? 'flash-correct' : 'shake-wrong');
+  setTimeout(() => panel.classList.remove('flash-correct', 'shake-wrong'), 800);
 }
 
 // ============================================================
@@ -1148,6 +1255,31 @@ function showResult() {
     val1.textContent = score + '問';
     lbl2.textContent = 'ハイスコア';
     val2.textContent = hs + '問';
+
+    // 逃した問題レビューセクションを描画
+    const reviewEl = document.getElementById('review-section');
+    if (missedProblems.length > 0) {
+      const CARD_COLORS = ['#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#DDA0DD','#F0A500','#E84393'];
+      let html = `<button class="review-toggle" onclick="toggleReview(this)">まちがえた問題を復習する（${missedProblems.length}問）▼</button>`;
+      html += `<div class="review-list" style="display:none;">`;
+      missedProblems.forEach((p, i) => {
+        html += `<div class="review-card">`;
+        html += `<div style="font-size:0.85rem;color:#888;margin-bottom:6px;">問題 ${i + 1}</div>`;
+        html += `<div class="review-card-nums">`;
+        p.numbers.forEach((n, ni) => {
+          const col = CARD_COLORS[ni % CARD_COLORS.length];
+          html += `<span class="review-num" style="background:${col};">${n}</span>`;
+        });
+        html += `</div>`;
+        html += `<div class="review-solution">答え: <strong>${p.solution}</strong> ＝ 10</div>`;
+        html += `</div>`;
+      });
+      html += `</div>`;
+      reviewEl.innerHTML = html;
+      reviewEl.style.display = '';
+    } else {
+      reviewEl.style.display = 'none';
+    }
   } else {
     iconEl.textContent = '🎯';
     titleEl.textContent = `フリーモード結果 (${currentLevel})`;
@@ -1155,10 +1287,18 @@ function showResult() {
     val1.textContent = score + '問';
     lbl2.textContent = 'ベスト';
     val2.textContent = hs + '問';
+    document.getElementById('review-section').style.display = 'none';
   }
 
   badge.style.display = isNew && score > 0 ? '' : 'none';
   showScreen('result-screen');
+}
+
+function toggleReview(btn) {
+  const list = btn.nextElementSibling;
+  const isOpen = list.style.display !== 'none';
+  list.style.display = isOpen ? 'none' : '';
+  btn.textContent = btn.textContent.replace(isOpen ? '▲' : '▼', isOpen ? '▼' : '▲');
 }
 </script>
 </body>
