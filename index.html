@@ -131,6 +131,7 @@
     gap: 16px;
     width: 100%;
   }
+  .mode-grid .mode-btn.free { grid-column: 1 / -1; }
   .mode-btn {
     border: none;
     border-radius: 20px;
@@ -150,8 +151,21 @@
   .mode-btn .mode-desc { font-size: 0.78rem; text-align: center; line-height: 1.4; }
   .mode-btn.timeattack { background: linear-gradient(135deg, #FF7675, #D63031); color: white; box-shadow: 0 4px 14px rgba(214,48,49,0.4); }
   .mode-btn.timeattack .mode-desc { color: rgba(255,255,255,0.85); }
+  .mode-btn.tacount { background: linear-gradient(135deg, #FDCB6E, #F0932B); color: white; box-shadow: 0 4px 14px rgba(240,147,43,0.4); }
+  .mode-btn.tacount .mode-desc { color: rgba(255,255,255,0.85); }
   .mode-btn.free { background: linear-gradient(135deg, #55EFC4, #00B894); color: white; box-shadow: 0 4px 14px rgba(0,184,148,0.4); }
   .mode-btn.free .mode-desc { color: rgba(255,255,255,0.85); }
+
+  .btn-quit {
+    background: white;
+    color: #aaa;
+    border: 2px solid #eee;
+    box-shadow: none;
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    border-radius: 10px;
+  }
+  .btn-quit:hover { background: #fff0f0; color: #e74c3c; border-color: #f5c6cb; }
 
   /* ===== GAME SCREEN ===== */
   #game-screen { gap: 12px; }
@@ -628,10 +642,15 @@
     <h2 style="font-size:1.5rem; color:#333;">モードを選んでね</h2>
   </div>
   <div class="mode-grid">
-    <button class="mode-btn timeattack" onclick="startGame('timeattack')">
+    <button class="mode-btn timeattack" onclick="startGame('ta-time')">
       <span class="mode-icon">⏱️</span>
       <span class="mode-name">タイムアタック</span>
-      <span class="mode-desc">90秒で<br>何問解けるか！</span>
+      <span class="mode-desc">120秒で<br>何問解けるか！</span>
+    </button>
+    <button class="mode-btn tacount" onclick="startGame('ta-count')">
+      <span class="mode-icon">🔟</span>
+      <span class="mode-name">10問チャレンジ</span>
+      <span class="mode-desc">10問を<br>最速で解け！</span>
     </button>
     <button class="mode-btn free" onclick="startGame('free')">
       <span class="mode-icon">🎯</span>
@@ -651,6 +670,7 @@
     <div class="score-area">
       <div id="timer-area"></div>
     </div>
+    <button class="btn-quit" onclick="quitGame()">やめる</button>
   </div>
 
   <!-- 問題パネル -->
@@ -729,13 +749,19 @@
 // ============================================================
 //  設定
 // ============================================================
+const KYUUKU = [12,14,15,16,18,20,21,24,25,27,28,30,32,35,36,40,42,45,48,49,54,56,63,64,72,81];
+function advancedNum() {
+  return Math.random() < 0.65 ? randomInt(1, 9) : KYUUKU[Math.floor(Math.random() * KYUUKU.length)];
+}
 const LEVEL_CONFIG = {
-  '初級': { cardCount: 4, minNum: 1, maxNum: 9,  ops: ['+', '-'],           hasHint: true  },
-  '中級': { cardCount: 4, minNum: 1, maxNum: 9,  ops: ['+', '-', '*', '/'], hasHint: false },
-  '上級': { cardCount: 5, minNum: 1, maxNum: 99, ops: ['+', '-', '*', '/'], hasHint: false },
+  '初級': { cardCount: 4, genNum: () => randomInt(1, 9), ops: ['+', '-'],           hasHint: true,  noParen: true  },
+  '中級': { cardCount: 4, genNum: () => randomInt(1, 9), ops: ['+', '-', '*', '/'], hasHint: false, noParen: true  },
+  '上級': { cardCount: 5, genNum: advancedNum,           ops: ['+', '-', '*', '/'], hasHint: false, noParen: false },
 };
 const OP_LABELS = { '+': '＋', '-': '−', '*': '×', '/': '÷' };
-const TIME_LIMIT = 90;
+const TA_TIME_LIMIT = 120;
+const TA_COUNT_GOAL = 10;
+function isTAMode() { return currentMode === 'ta-time' || currentMode === 'ta-count'; }
 
 // ============================================================
 //  ゲーム状態
@@ -747,7 +773,7 @@ let tokens = [];           // { type:'number'|'op'|'paren', value, cardIndex? }
 let usedCards = [];        // bool[]
 let score = 0;
 let missedProblems = []; // { numbers, solution } タイムアタックで逃した問題
-let timerValue = TIME_LIMIT;
+let timerValue = TA_TIME_LIMIT;
 let timerInterval = null;
 let gameActive = false;
 
@@ -766,21 +792,29 @@ function selectLevel(level) {
 }
 
 function renderHighscores() {
-  const ta = getHighscore('timeattack');
+  const tt = getHighscore('ta-time');
+  const tc = getHighscore('ta-count');
   const fr = getHighscore('free');
+  const tcStr = tc === Infinity ? '---' : tc + '秒';
   const el = document.getElementById('highscore-display');
-  el.innerHTML = `${currentLevel}のハイスコア ｜ ⏱️ タイムアタック: <b>${ta}</b>問 ／ 🎯 フリー: <b>${fr}</b>問`;
+  el.innerHTML = `${currentLevel} ｜ ⏱️ <b>${tt}</b>問 ／ 🔟 <b>${tcStr}</b> ／ 🎯 <b>${fr}</b>問`;
 }
 
 // ============================================================
 //  ハイスコア
 // ============================================================
 function getHighscore(mode) {
-  return parseInt(localStorage.getItem(`make10_hs_${currentLevel}_${mode}`) || '0');
+  const raw = parseInt(localStorage.getItem(`make10_hs_${currentLevel}_${mode}`) || '0');
+  if (mode === 'ta-count') return raw === 0 ? Infinity : raw;
+  return raw;
 }
 function saveHighscore(mode, val) {
   const key = `make10_hs_${currentLevel}_${mode}`;
   const prev = getHighscore(mode);
+  if (mode === 'ta-count') {
+    if (val < prev) { localStorage.setItem(key, val); return true; }
+    return false;
+  }
   if (val > prev) { localStorage.setItem(key, val); return true; }
   return false;
 }
@@ -797,7 +831,7 @@ function startGame(mode) {
   showScreen('game-screen');
   renderGameHeader();
   generateAndRender();
-  if (mode === 'timeattack') startTimer();
+  if (isTAMode()) startTimer();
 }
 
 function renderGameHeader() {
@@ -807,7 +841,7 @@ function renderGameHeader() {
   badge.textContent = `${currentLevel}`;
 
   const timerArea = document.getElementById('timer-area');
-  if (currentMode === 'timeattack') {
+  if (currentMode === 'ta-time') {
     timerArea.innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;">
         <div class="ta-header-score">
@@ -821,10 +855,22 @@ function renderGameHeader() {
               stroke-dasharray="${2 * Math.PI * 26}"
               stroke-dashoffset="0"/>
           </svg>
-          <div class="timer-text" id="timer-text">${TIME_LIMIT}</div>
+          <div class="timer-text" id="timer-text">${TA_TIME_LIMIT}</div>
         </div>
       </div>`;
     updateTimerDisplay();
+  } else if (currentMode === 'ta-count') {
+    timerArea.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="ta-header-score">
+          <div class="score-label">残り</div>
+          <div class="score-val" id="ta-remain-display">${TA_COUNT_GOAL}問</div>
+        </div>
+        <div class="ta-header-score">
+          <div class="score-label">経過</div>
+          <div class="score-val" id="ta-elapsed-display">0秒</div>
+        </div>
+      </div>`;
   } else {
     timerArea.innerHTML = `<div class="free-score">正解 <span id="free-score-val">0</span> 問</div>`;
   }
@@ -834,30 +880,43 @@ function renderGameHeader() {
 //  タイマー
 // ============================================================
 function startTimer() {
-  timerValue = TIME_LIMIT;
-  updateTimerDisplay();
-  timerInterval = setInterval(() => {
-    timerValue--;
+  if (currentMode === 'ta-time') {
+    timerValue = TA_TIME_LIMIT;
     updateTimerDisplay();
-    if (timerValue <= 0) {
-      clearInterval(timerInterval);
-      gameActive = false;
-      showResult();
-    }
-  }, 1000);
+    timerInterval = setInterval(() => {
+      timerValue--;
+      updateTimerDisplay();
+      if (timerValue <= 0) {
+        clearInterval(timerInterval);
+        gameActive = false;
+        showResult();
+      }
+    }, 1000);
+  } else if (currentMode === 'ta-count') {
+    timerValue = 0;
+    timerInterval = setInterval(() => {
+      timerValue++;
+      updateTimerDisplay();
+    }, 1000);
+  }
 }
 
 function updateTimerDisplay() {
-  const textEl = document.getElementById('timer-text');
-  const arcEl  = document.getElementById('timer-arc');
-  const ringEl = document.getElementById('timer-ring');
-  if (!textEl) return;
-  textEl.textContent = timerValue;
-  const r = 26, circ = 2 * Math.PI * r;
-  const offset = circ * (1 - timerValue / TIME_LIMIT);
-  arcEl.style.strokeDashoffset = offset;
-  if (timerValue <= 15) ringEl.classList.add('urgent');
-  else ringEl.classList.remove('urgent');
+  if (currentMode === 'ta-time') {
+    const textEl = document.getElementById('timer-text');
+    const arcEl  = document.getElementById('timer-arc');
+    const ringEl = document.getElementById('timer-ring');
+    if (!textEl) return;
+    textEl.textContent = timerValue;
+    const r = 26, circ = 2 * Math.PI * r;
+    const offset = circ * (1 - timerValue / TA_TIME_LIMIT);
+    arcEl.style.strokeDashoffset = offset;
+    if (timerValue <= 15) ringEl.classList.add('urgent');
+    else ringEl.classList.remove('urgent');
+  } else if (currentMode === 'ta-count') {
+    const el = document.getElementById('ta-elapsed-display');
+    if (el) el.textContent = timerValue + '秒';
+  }
 }
 
 // ============================================================
@@ -872,8 +931,8 @@ function generateProblem() {
   let numbers, solution;
   let attempts = 0;
   do {
-    numbers = Array.from({ length: cfg.cardCount }, () => randomInt(cfg.minNum, cfg.maxNum));
-    solution = solve(numbers.map(v => ({ value: v, expr: String(v) })), cfg.ops);
+    numbers = Array.from({ length: cfg.cardCount }, () => cfg.genNum());
+    solution = solve(numbers.map(v => ({ value: v, expr: String(v) })), cfg.ops, 10, cfg.noParen);
     attempts++;
     if (attempts > 2000) break; // 無限ループ防止（理論上ほぼ起きない）
   } while (!solution);
@@ -910,7 +969,7 @@ function wrapExpr(leftExpr, op, rightExpr) {
   return `${l}${opLabel}${r}`;
 }
 
-function solve(items, ops, target = 10) {
+function solve(items, ops, target = 10, noParen = false) {
   if (items.length === 1) {
     return Math.abs(items[0].value - target) < 1e-9 ? items[0].expr : null;
   }
@@ -918,12 +977,13 @@ function solve(items, ops, target = 10) {
     for (let j = 0; j < items.length; j++) {
       if (i === j) continue;
       for (const op of ops) {
+        if (noParen && (needsParen(items[i].expr, op, 'left') || needsParen(items[j].expr, op, 'right'))) continue;
         const val = applyOp(items[i].value, op, items[j].value);
         if (val === null) continue;
         const expr = wrapExpr(items[i].expr, op, items[j].expr);
         const rest = items.filter((_, k) => k !== i && k !== j);
         rest.push({ value: val, expr });
-        const result = solve(rest, ops, target);
+        const result = solve(rest, ops, target, noParen);
         if (result) return result;
       }
     }
@@ -1089,7 +1149,7 @@ function formatNum(n) {
 //  答え合わせ
 // ============================================================
 function submitAnswer() {
-  if (!gameActive && currentMode === 'timeattack') return;
+  if (!gameActive && isTAMode()) return;
   const evalStr = buildEvalStr();
   let result = null;
   try { result = Function('"use strict"; return (' + evalStr + ')')(); } catch(e) {}
@@ -1105,12 +1165,25 @@ function submitAnswer() {
 
 function onCorrect() {
   score++;
-  if (currentMode === 'timeattack') {
+  if (currentMode === 'ta-time') {
     const el = document.getElementById('ta-score-display');
     if (el) el.textContent = score;
     showStarBurst();
     flashPanel('correct');
     setTimeout(() => { if (gameActive) generateAndRender(); }, 700);
+  } else if (currentMode === 'ta-count') {
+    const remain = TA_COUNT_GOAL - score;
+    const remEl = document.getElementById('ta-remain-display');
+    if (remEl) remEl.textContent = remain + '問';
+    showStarBurst();
+    flashPanel('correct');
+    if (score >= TA_COUNT_GOAL) {
+      clearInterval(timerInterval);
+      gameActive = false;
+      setTimeout(() => showResult(), 700);
+    } else {
+      setTimeout(() => { if (gameActive) generateAndRender(); }, 700);
+    }
   } else {
     document.getElementById('free-score-val').textContent = score;
     showStarBurst();
@@ -1119,7 +1192,7 @@ function onCorrect() {
 }
 
 function onWrong() {
-  if (currentMode === 'timeattack') {
+  if (isTAMode()) {
     flashPanel('wrong');
   } else {
     showFeedback(false, currentProblem.solution);
@@ -1127,7 +1200,7 @@ function onWrong() {
 }
 
 function giveUp() {
-  if (currentMode === 'timeattack') {
+  if (isTAMode()) {
     missedProblems.push({ numbers: [...currentProblem.numbers], solution: currentProblem.solution });
     flashPanel('wrong');
     setTimeout(() => { if (gameActive) generateAndRender(); }, 500);
@@ -1199,7 +1272,7 @@ function showFeedback(correct, solution) {
 
 function closeFeedback() {
   document.getElementById('feedback-overlay').classList.remove('show');
-  if (!gameActive && currentMode === 'timeattack') {
+  if (!gameActive && isTAMode()) {
     showResult();
     return;
   }
@@ -1237,9 +1310,6 @@ function showResult() {
   clearInterval(timerInterval);
   gameActive = false;
 
-  const isNew = saveHighscore(currentMode, score);
-  const hs = getHighscore(currentMode);
-
   const iconEl = document.getElementById('result-icon');
   const titleEl = document.getElementById('result-title');
   const badge = document.getElementById('new-record-badge');
@@ -1247,51 +1317,65 @@ function showResult() {
   const val1 = document.getElementById('stat-val1');
   const lbl2 = document.getElementById('stat-label2');
   const val2 = document.getElementById('stat-val2');
+  const reviewEl = document.getElementById('review-section');
 
-  if (currentMode === 'timeattack') {
-    iconEl.textContent = score >= 5 ? '🏆' : score >= 3 ? '⭐' : '😤';
+  let isNew = false;
+
+  if (currentMode === 'ta-time') {
+    isNew = saveHighscore('ta-time', score);
+    const hs = getHighscore('ta-time');
+    iconEl.textContent = score >= 8 ? '🏆' : score >= 4 ? '⭐' : '😤';
     titleEl.textContent = `タイムアタック結果 (${currentLevel})`;
     lbl1.textContent = '正解数';
     val1.textContent = score + '問';
     lbl2.textContent = 'ハイスコア';
     val2.textContent = hs + '問';
+    renderReviewSection(reviewEl);
 
-    // 逃した問題レビューセクションを描画
-    const reviewEl = document.getElementById('review-section');
-    if (missedProblems.length > 0) {
-      const CARD_COLORS = ['#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#DDA0DD','#F0A500','#E84393'];
-      let html = `<button class="review-toggle" onclick="toggleReview(this)">まちがえた問題を復習する（${missedProblems.length}問）▼</button>`;
-      html += `<div class="review-list" style="display:none;">`;
-      missedProblems.forEach((p, i) => {
-        html += `<div class="review-card">`;
-        html += `<div style="font-size:0.85rem;color:#888;margin-bottom:6px;">問題 ${i + 1}</div>`;
-        html += `<div class="review-card-nums">`;
-        p.numbers.forEach((n, ni) => {
-          const col = CARD_COLORS[ni % CARD_COLORS.length];
-          html += `<span class="review-num" style="background:${col};">${n}</span>`;
-        });
-        html += `</div>`;
-        html += `<div class="review-solution">答え: <strong>${p.solution}</strong> ＝ 10</div>`;
-        html += `</div>`;
-      });
-      html += `</div>`;
-      reviewEl.innerHTML = html;
-      reviewEl.style.display = '';
-    } else {
-      reviewEl.style.display = 'none';
-    }
+  } else if (currentMode === 'ta-count') {
+    isNew = saveHighscore('ta-count', timerValue);
+    const hs = getHighscore('ta-count');
+    iconEl.textContent = timerValue <= 60 ? '🏆' : timerValue <= 100 ? '⭐' : '😤';
+    titleEl.textContent = `10問チャレンジ結果 (${currentLevel})`;
+    lbl1.textContent = 'クリアタイム';
+    val1.textContent = timerValue + '秒';
+    lbl2.textContent = 'ベストタイム';
+    val2.textContent = hs === Infinity ? '---' : hs + '秒';
+    renderReviewSection(reviewEl);
+
   } else {
+    isNew = saveHighscore('free', score);
+    const hs = getHighscore('free');
     iconEl.textContent = '🎯';
     titleEl.textContent = `フリーモード結果 (${currentLevel})`;
     lbl1.textContent = '正解数';
     val1.textContent = score + '問';
     lbl2.textContent = 'ベスト';
     val2.textContent = hs + '問';
-    document.getElementById('review-section').style.display = 'none';
+    reviewEl.style.display = 'none';
   }
 
-  badge.style.display = isNew && score > 0 ? '' : 'none';
+  badge.style.display = isNew ? '' : 'none';
   showScreen('result-screen');
+}
+
+function renderReviewSection(reviewEl) {
+  if (missedProblems.length === 0) { reviewEl.style.display = 'none'; return; }
+  const CARD_COLORS = ['#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#DDA0DD','#F0A500','#E84393'];
+  let html = `<button class="review-toggle" onclick="toggleReview(this)">まちがえた問題を復習する（${missedProblems.length}問）▼</button>`;
+  html += `<div class="review-list" style="display:none;">`;
+  missedProblems.forEach((p, i) => {
+    html += `<div class="review-card">`;
+    html += `<div style="font-size:0.85rem;color:#888;margin-bottom:6px;">問題 ${i + 1}</div>`;
+    html += `<div class="review-card-nums">`;
+    p.numbers.forEach((n, ni) => {
+      html += `<span class="review-num" style="background:${CARD_COLORS[ni % CARD_COLORS.length]};">${n}</span>`;
+    });
+    html += `</div><div class="review-solution">答え: <strong>${p.solution}</strong> ＝ 10</div></div>`;
+  });
+  html += `</div>`;
+  reviewEl.innerHTML = html;
+  reviewEl.style.display = '';
 }
 
 function toggleReview(btn) {
@@ -1299,6 +1383,12 @@ function toggleReview(btn) {
   const isOpen = list.style.display !== 'none';
   list.style.display = isOpen ? 'none' : '';
   btn.textContent = btn.textContent.replace(isOpen ? '▲' : '▼', isOpen ? '▼' : '▲');
+}
+
+function quitGame() {
+  clearInterval(timerInterval);
+  gameActive = false;
+  showScreen('mode-screen');
 }
 </script>
 </body>
